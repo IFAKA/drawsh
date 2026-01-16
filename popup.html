@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 260px;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      background: #1a1a1a;
+      color: #fff;
+    }
+
+    h1 {
+      font-size: 18px;
+      margin: 0 0 12px 0;
+      font-weight: 600;
+    }
+
+    .toggle-btn {
+      width: 100%;
+      padding: 12px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.15s;
+    }
+
+    .toggle-btn:hover {
+      background: #2563eb;
+    }
+
+    .toggle-btn.active {
+      background: #ef4444;
+    }
+
+    .toggle-btn.active:hover {
+      background: #dc2626;
+    }
+
+    .shortcuts {
+      margin-top: 16px;
+      font-size: 11px;
+      color: #888;
+    }
+
+    .shortcuts-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+
+    .shortcut-group {
+      margin-bottom: 12px;
+    }
+
+    .shortcut {
+      display: flex;
+      justify-content: space-between;
+      padding: 3px 0;
+    }
+
+    .key {
+      background: #333;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 10px;
+    }
+
+    .key-group {
+      display: flex;
+      gap: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Drawsh</h1>
+
+  <button class="toggle-btn" id="toggleBtn">Start Drawing</button>
+
+  <div class="shortcuts">
+    <div class="shortcut-group">
+      <div class="shortcuts-title">Tools</div>
+      <div class="shortcut">
+        <span>Pen</span>
+        <span class="key">P</span>
+      </div>
+      <div class="shortcut">
+        <span>Line</span>
+        <span class="key">L</span>
+      </div>
+      <div class="shortcut">
+        <span>Arrow</span>
+        <span class="key">A</span>
+      </div>
+      <div class="shortcut">
+        <span>Rectangle</span>
+        <span class="key">R</span>
+      </div>
+      <div class="shortcut">
+        <span>Circle</span>
+        <span class="key">C</span>
+      </div>
+      <div class="shortcut">
+        <span>Text</span>
+        <span class="key">T</span>
+      </div>
+      <div class="shortcut">
+        <span>Eraser</span>
+        <span class="key">E</span>
+      </div>
+    </div>
+
+    <div class="shortcut-group">
+      <div class="shortcuts-title">Actions</div>
+      <div class="shortcut">
+        <span>Copy to clipboard</span>
+        <span class="key">S</span>
+      </div>
+      <div class="shortcut">
+        <span>Undo</span>
+        <span class="key">Cmd/Ctrl+Z</span>
+      </div>
+      <div class="shortcut">
+        <span>Redo</span>
+        <span class="key">Cmd/Ctrl+Shift+Z</span>
+      </div>
+      <div class="shortcut">
+        <span>Colors</span>
+        <span class="key-group"><span class="key">1</span>-<span class="key">8</span></span>
+      </div>
+      <div class="shortcut">
+        <span>Close</span>
+        <span class="key">Esc</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

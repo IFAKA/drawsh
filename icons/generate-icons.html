@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Generate Drawsh Icons</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    canvas { border: 1px solid #ccc; margin: 10px; }
+    button { padding: 10px 20px; font-size: 16px; margin: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Drawsh Icon Generator</h1>
+  <p>Right-click each canvas and "Save image as..." with the filename shown below.</p>
+
+  <div>
+    <h3>icon16.png</h3>
+    <canvas id="icon16" width="16" height="16"></canvas>
+  </div>
+
+  <div>
+    <h3>icon48.png</h3>
+    <canvas id="icon48" width="48" height="48"></canvas>
+  </div>
+
+  <div>
+    <h3>icon128.png</h3>
+    <canvas id="icon128" width="128" height="128"></canvas>
+  </div>
+
+  <script>
+    function drawIcon(canvas) {
+      const ctx = canvas.getContext('2d');
+      const size = canvas.width;
+      const scale = size / 128;
+
+      // Background gradient
+      const grad = ctx.createLinearGradient(0, 0, size, size);
+      grad.addColorStop(0, '#3b82f6');
+      grad.addColorStop(1, '#8b5cf6');
+
+      // Rounded rect background
+      const radius = 24 * scale;
+      ctx.beginPath();
+      ctx.moveTo(radius, 0);
+      ctx.lineTo(size - radius, 0);
+      ctx.quadraticCurveTo(size, 0, size, radius);
+      ctx.lineTo(size, size - radius);
+      ctx.quadraticCurveTo(size, size, size - radius, size);
+      ctx.lineTo(radius, size);
+      ctx.quadraticCurveTo(0, size, 0, size - radius);
+      ctx.lineTo(0, radius);
+      ctx.quadraticCurveTo(0, 0, radius, 0);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // Pencil icon
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = Math.max(1, 6 * scale);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Pencil body
+      ctx.beginPath();
+      ctx.moveTo(32 * scale, 96 * scale);
+      ctx.lineTo(80 * scale, 32 * scale);
+      ctx.lineTo(96 * scale, 48 * scale);
+      ctx.lineTo(48 * scale, 112 * scale);
+      ctx.lineTo(28 * scale, 116 * scale);
+      ctx.closePath();
+      ctx.stroke();
+
+      // Pencil line
+      ctx.beginPath();
+      ctx.moveTo(72 * scale, 40 * scale);
+      ctx.lineTo(88 * scale, 56 * scale);
+      ctx.stroke();
+    }
+
+    drawIcon(document.getElementById('icon16'));
+    drawIcon(document.getElementById('icon48'));
+    drawIcon(document.getElementById('icon128'));
+  </script>
+</body>
+</html>

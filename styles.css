@@ -1,0 +1,156 @@
+#drawsh-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 2147483646;
+  pointer-events: none;
+  touch-action: none;
+}
+
+#drawsh-canvas.active {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
+#drawsh-toolbar {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483647;
+  background: #1a1a1a;
+  border-radius: 12px;
+  padding: 8px 12px;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  user-select: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+#drawsh-toolbar.visible {
+  display: flex;
+}
+
+.drawsh-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.drawsh-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.drawsh-btn.active {
+  background: rgba(59, 130, 246, 0.5);
+}
+
+.drawsh-color {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.drawsh-color:hover {
+  transform: scale(1.1);
+}
+
+.drawsh-color.active {
+  border-color: white;
+}
+
+.drawsh-divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.2);
+  margin: 0 4px;
+}
+
+.drawsh-size {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.drawsh-size:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.drawsh-size.active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.drawsh-size-dot {
+  border-radius: 50%;
+  background: white;
+}
+
+.drawsh-icon {
+  width: 18px;
+  height: 18px;
+  stroke: white;
+}
+
+/* Text input for annotations */
+.drawsh-text-input {
+  position: fixed;
+  z-index: 2147483647;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid currentColor;
+  outline: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  min-width: 100px;
+  padding: 4px 0;
+  transform: translateY(-100%);
+}
+
+.drawsh-text-input::placeholder {
+  color: rgba(128, 128, 128, 0.5);
+}
+
+/* Toast notification */
+#drawsh-toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  z-index: 2147483647;
+  background: #1a1a1a;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+}
+
+#drawsh-toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
