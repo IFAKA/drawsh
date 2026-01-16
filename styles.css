@@ -12,6 +12,7 @@
 #drawsh-canvas.active {
   pointer-events: auto;
   cursor: crosshair;
+  background: rgba(0, 0, 0, 0.05);
 }
 
 #drawsh-toolbar {
