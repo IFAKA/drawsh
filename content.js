@@ -423,9 +423,9 @@ class Drawsh {
     this.ctx.lineJoin = 'round';
 
     if (this.currentTool === 'eraser') {
-      this.ctx.globalCompositeOperation = 'destination-out';
-      this.ctx.strokeStyle = 'rgba(0,0,0,1)';
-      this.ctx.lineWidth = this.currentSize * 4;
+      // Stroke eraser - check if we hit any strokes at this point
+      this.eraseStrokesAtPoint(point);
+      return;
     } else {
       this.ctx.globalCompositeOperation = 'source-over';
       this.ctx.strokeStyle = this.currentColor;
@@ -451,21 +451,23 @@ class Drawsh {
 
     let point = this.getPoint(e);
 
-    if (this.currentTool === 'pen' || this.currentTool === 'eraser') {
+    if (this.currentTool === 'eraser') {
+      // Stroke eraser - continuously check for strokes under cursor
+      this.eraseStrokesAtPoint(point);
+      return;
+    } else if (this.currentTool === 'pen') {
       // Apply smoothing to reduce jitter
       point = this.smoothPoint(point, this.points.length);
       this.points.push(point);
 
-      if (this.isAutoContrast && this.currentTool === 'pen') {
+      if (this.isAutoContrast) {
         // Redraw everything to properly layer the outline
         this.redraw();
         this.drawNaturalStrokeWithOutline(this.points, this.currentSize);
-      } else if (this.currentTool === 'pen') {
+      } else {
         // Draw natural stroke with variable width
         this.redraw();
         this.drawNaturalStroke(this.ctx, this.points, this.currentSize, this.currentColor, this.currentAlpha);
-      } else {
-        this.drawFreehand();
       }
     } else {
       // Apply shift modifiers for shapes
@@ -678,17 +680,19 @@ class Drawsh {
 
     let endPoint = e ? this.getPoint(e) : this.points[this.points.length - 1];
 
-    if (this.currentTool === 'pen' || this.currentTool === 'eraser') {
+    if (this.currentTool === 'pen') {
       if (this.points.length > 0) {
         this.strokes.push({
-          type: this.currentTool,
+          type: 'pen',
           points: [...this.points],
           color: this.currentColor,
           alpha: this.currentAlpha,
           size: this.currentSize,
-          autoContrast: this.isAutoContrast && this.currentTool === 'pen'
+          autoContrast: this.isAutoContrast
         });
       }
+    } else if (this.currentTool === 'eraser') {
+      // Stroke eraser doesn't create strokes, it removes them
     } else if (this.startPoint && endPoint) {
       // Apply shift modifiers for final shape
       if (this.shiftHeld) {
@@ -893,28 +897,170 @@ class Drawsh {
     };
   }
 
+  // Stroke eraser - remove strokes that intersect with the given point
+  eraseStrokesAtPoint(point) {
+    const hitRadius = this.currentSize * 4; // Eraser hit area
+    let strokeRemoved = false;
+
+    // Check strokes in reverse order (top-most first)
+    for (let i = this.strokes.length - 1; i >= 0; i--) {
+      const stroke = this.strokes[i];
+      if (stroke.type === 'clearAll') continue;
+
+      if (this.isPointNearStroke(point, stroke, hitRadius)) {
+        // Remove the stroke and add to redo stack
+        const removed = this.strokes.splice(i, 1)[0];
+        this.redoStack.push(removed);
+        strokeRemoved = true;
+        break; // Only remove one stroke per check
+      }
+    }
+
+    if (strokeRemoved) {
+      this.redraw();
+    }
+  }
+
+  // Check if a point is near a stroke
+  isPointNearStroke(point, stroke, radius) {
+    if (stroke.type === 'pen') {
+      return this.isPointNearPath(point, stroke.points, radius + stroke.size);
+    } else if (stroke.type === 'text') {
+      return this.isPointNearText(point, stroke, radius);
+    } else if (stroke.type === 'line' || stroke.type === 'arrow') {
+      return this.isPointNearLine(point, stroke.start, stroke.end, radius + stroke.size);
+    } else if (stroke.type === 'rect') {
+      return this.isPointNearRect(point, stroke.start, stroke.end, radius + stroke.size);
+    } else if (stroke.type === 'circle') {
+      return this.isPointNearEllipse(point, stroke.start, stroke.end, radius + stroke.size);
+    }
+    return false;
+  }
+
+  // Check if point is near a freehand path
+  isPointNearPath(point, points, radius) {
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      const dx = point.x - p.x;
+      const dy = point.y - p.y;
+      if (dx * dx + dy * dy <= radius * radius) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Check if point is near text
+  isPointNearText(point, stroke, radius) {
+    // Approximate text bounding box
+    const fontSize = 16 + stroke.size * 2;
+    const textWidth = stroke.text.length * fontSize * 0.6;
+    const textHeight = fontSize;
+    const x = stroke.point.x;
+    const y = stroke.point.y - textHeight * 0.8;
+
+    return point.x >= x - radius && point.x <= x + textWidth + radius &&
+           point.y >= y - radius && point.y <= y + textHeight + radius;
+  }
+
+  // Check if point is near a line segment
+  isPointNearLine(point, start, end, radius) {
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const lengthSq = dx * dx + dy * dy;
+
+    if (lengthSq === 0) {
+      // Line is a point
+      const d = Math.sqrt((point.x - start.x) ** 2 + (point.y - start.y) ** 2);
+      return d <= radius;
+    }
+
+    // Project point onto line segment
+    let t = ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSq;
+    t = Math.max(0, Math.min(1, t));
+
+    const nearestX = start.x + t * dx;
+    const nearestY = start.y + t * dy;
+    const distance = Math.sqrt((point.x - nearestX) ** 2 + (point.y - nearestY) ** 2);
+
+    return distance <= radius;
+  }
+
+  // Check if point is near rectangle outline
+  isPointNearRect(point, start, end, radius) {
+    const left = Math.min(start.x, end.x);
+    const right = Math.max(start.x, end.x);
+    const top = Math.min(start.y, end.y);
+    const bottom = Math.max(start.y, end.y);
+
+    // Check all four edges
+    return this.isPointNearLine(point, { x: left, y: top }, { x: right, y: top }, radius) ||
+           this.isPointNearLine(point, { x: right, y: top }, { x: right, y: bottom }, radius) ||
+           this.isPointNearLine(point, { x: right, y: bottom }, { x: left, y: bottom }, radius) ||
+           this.isPointNearLine(point, { x: left, y: bottom }, { x: left, y: top }, radius);
+  }
+
+  // Check if point is near ellipse outline
+  isPointNearEllipse(point, start, end, radius) {
+    const centerX = (start.x + end.x) / 2;
+    const centerY = (start.y + end.y) / 2;
+    const radiusX = Math.abs(end.x - start.x) / 2;
+    const radiusY = Math.abs(end.y - start.y) / 2;
+
+    if (radiusX === 0 || radiusY === 0) return false;
+
+    // Normalize point to unit circle space
+    const normalizedX = (point.x - centerX) / radiusX;
+    const normalizedY = (point.y - centerY) / radiusY;
+    const distFromCenter = Math.sqrt(normalizedX * normalizedX + normalizedY * normalizedY);
+
+    // Check if point is near the ellipse outline (distance from 1 in normalized space)
+    const normalizedRadius = radius / Math.min(radiusX, radiusY);
+    return Math.abs(distFromCenter - 1) <= normalizedRadius;
+  }
+
   undo() {
     if (this.strokes.length > 0) {
       const stroke = this.strokes.pop();
       this.redoStack.push(stroke);
+      this.redraw();
+    } else if (this.redoStack.length > 0 && this.redoStack[0].type === 'clearAll') {
+      // Undo a clear all action - restore all strokes
+      const clearAction = this.redoStack.shift();
+      this.strokes = clearAction.strokes;
+      this.redoStack = [];
       this.redraw();
     }
   }
 
   redo() {
     if (this.redoStack.length > 0) {
-      const stroke = this.redoStack.pop();
-      this.strokes.push(stroke);
-      this.redraw();
+      const action = this.redoStack[this.redoStack.length - 1];
+      if (action.type === 'clearAll') {
+        // Redo the clear all
+        const clearAction = this.redoStack.pop();
+        clearAction.strokes = [...this.strokes];
+        this.redoStack = [clearAction];
+        this.strokes = [];
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      } else {
+        const stroke = this.redoStack.pop();
+        this.strokes.push(stroke);
+        this.redraw();
+      }
     }
   }
 
   clear() {
     if (this.strokes.length > 0) {
-      this.redoStack = [...this.strokes];
+      // Push a special "clearAll" action containing all cleared strokes
+      this.redoStack = [{
+        type: 'clearAll',
+        strokes: [...this.strokes]
+      }];
       this.strokes = [];
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
 
   async screenshot() {
@@ -1086,13 +1232,7 @@ class Drawsh {
       this.ctx.lineCap = 'round';
       this.ctx.lineJoin = 'round';
 
-      if (stroke.type === 'eraser') {
-        this.ctx.globalCompositeOperation = 'destination-out';
-        this.ctx.strokeStyle = 'rgba(0,0,0,1)';
-        this.ctx.lineWidth = stroke.size * 4;
-        this.ctx.globalAlpha = 1;
-        this.drawStrokePoints(stroke.points);
-      } else if (stroke.type === 'pen') {
+      if (stroke.type === 'pen') {
         this.ctx.globalCompositeOperation = 'source-over';
         if (stroke.autoContrast) {
           // Draw black outline first, then white on top

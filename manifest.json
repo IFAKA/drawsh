@@ -20,6 +20,18 @@
     "default_popup": "popup.html",
     "default_title": "Drawsh"
   },
+  "commands": {
+    "toggle-drawsh": {
+      "suggested_key": {
+        "default": "Alt+D",
+        "mac": "Alt+D"
+      },
+      "description": "Toggle drawing mode"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
