@@ -1,4 +1,13 @@
 class Drawsh {
+  // Check if extension context is still valid (becomes invalid after extension reload/update)
+  static get contextValid() {
+    try {
+      return !!chrome.runtime?.id;
+    } catch {
+      return false;
+    }
+  }
+
   constructor() {
     this.isActive = false;
     this.isDrawing = false;
@@ -132,6 +141,7 @@ class Drawsh {
 
   // Persistence Methods
   async saveStrokes() {
+    if (!Drawsh.contextValid) return;
     const url = this.getCurrentURL();
     const key = this.getStorageKey(url);
     const data = {
@@ -149,6 +159,7 @@ class Drawsh {
   }
 
   async loadStrokes() {
+    if (!Drawsh.contextValid) return;
     const url = this.getCurrentURL();
     const key = this.getStorageKey(url);
 
@@ -171,6 +182,7 @@ class Drawsh {
   }
 
   async checkStorageUsage() {
+    if (!Drawsh.contextValid) return;
     try {
       const bytesInUse = await chrome.storage.local.getBytesInUse();
       const limit = chrome.storage.local.QUOTA_BYTES || 10485760; // 10MB default
@@ -189,6 +201,7 @@ class Drawsh {
   }
 
   async cleanupOldStrokes() {
+    if (!Drawsh.contextValid) return;
     try {
       const allData = await chrome.storage.local.get();
       const strokeKeys = Object.keys(allData).filter(key => key.startsWith('drawsh_strokes_'));
@@ -249,6 +262,7 @@ class Drawsh {
 
     // Save before page closes
     window.addEventListener('beforeunload', () => {
+      if (!Drawsh.contextValid) return;
       // Use sync version for beforeunload
       const url = this.getCurrentURL();
       const key = this.getStorageKey(url);
@@ -1534,6 +1548,7 @@ class Drawsh {
   }
 
   async loadState() {
+    if (!Drawsh.contextValid) return;
     try {
       const result = await chrome.storage.local.get(['drawshActive']);
       this.isActive = result.drawshActive || false;
@@ -1544,6 +1559,7 @@ class Drawsh {
   }
 
   async saveState() {
+    if (!Drawsh.contextValid) return;
     try {
       await chrome.storage.local.set({ drawshActive: this.isActive });
     } catch (err) {
@@ -1556,8 +1572,8 @@ class Drawsh {
 // Initialize
 const drawsh = new Drawsh();
 
-// Handle messages from popup
-chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+// Handle messages from popup (guard against invalidated context)
+if (Drawsh.contextValid) chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.action === 'toggle') {
     drawsh.toggle().then(() => {
       sendResponse({ active: drawsh.isActive });
