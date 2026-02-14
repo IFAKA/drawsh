@@ -41,15 +41,21 @@ class Drawsh {
     this.lastVelocity = 0;
     this.smoothingFactor = 0.3; // Lower = smoother, higher = more responsive
 
+    // Persistence
+    this.saveDebounceTimer = null;
+    this.currentURL = null;
+
     this.init();
   }
 
-  init() {
+  async init() {
     this.createCanvas();
     this.createToolbar();
     this.bindEvents();
-    this.loadState();
+    await this.loadState();
+    await this.loadStrokes();
     this.setSmartDefaultColor();
+    this.setupURLChangeDetection();
   }
 
   // Analyze page brightness and set contrasting default color
@@ -103,6 +109,156 @@ class Drawsh {
 
     // Use relative luminance formula (perceived brightness)
     return (0.299 * r + 0.587 * g + 0.114 * b);
+  }
+
+  // URL Normalization & Storage Keys
+  normalizeURL(url) {
+    try {
+      const urlObj = new URL(url);
+      // Remove hash and query params for simpler, more intuitive matching
+      return urlObj.origin + urlObj.pathname;
+    } catch (e) {
+      return url;
+    }
+  }
+
+  getCurrentURL() {
+    return this.normalizeURL(window.location.href);
+  }
+
+  getStorageKey(url) {
+    return `drawsh_strokes_${url}`;
+  }
+
+  // Persistence Methods
+  async saveStrokes() {
+    const url = this.getCurrentURL();
+    const key = this.getStorageKey(url);
+    const data = {
+      strokes: this.strokes,
+      timestamp: Date.now(),
+      version: 1
+    };
+
+    try {
+      await chrome.storage.local.set({ [key]: data });
+      await this.checkStorageUsage();
+    } catch (err) {
+      console.error('Failed to save strokes:', err);
+    }
+  }
+
+  async loadStrokes() {
+    const url = this.getCurrentURL();
+    const key = this.getStorageKey(url);
+
+    try {
+      const result = await chrome.storage.local.get([key]);
+      if (result[key] && result[key].strokes) {
+        this.strokes = result[key].strokes;
+        this.redraw();
+      }
+    } catch (err) {
+      console.error('Failed to load strokes:', err);
+    }
+  }
+
+  debouncedSaveStrokes() {
+    clearTimeout(this.saveDebounceTimer);
+    this.saveDebounceTimer = setTimeout(() => {
+      this.saveStrokes();
+    }, 500);
+  }
+
+  async checkStorageUsage() {
+    try {
+      const bytesInUse = await chrome.storage.local.getBytesInUse();
+      const limit = chrome.storage.local.QUOTA_BYTES || 10485760; // 10MB default
+      const usagePercent = (bytesInUse / limit) * 100;
+
+      if (usagePercent >= 90) {
+        this.showToast('Storage almost full (90%)');
+        // Only cleanup when storage is full, not automatically
+        if (usagePercent >= 100) {
+          await this.cleanupOldStrokes();
+        }
+      }
+    } catch (err) {
+      console.error('Failed to check storage usage:', err);
+    }
+  }
+
+  async cleanupOldStrokes() {
+    try {
+      const allData = await chrome.storage.local.get();
+      const strokeKeys = Object.keys(allData).filter(key => key.startsWith('drawsh_strokes_'));
+
+      if (strokeKeys.length === 0) return;
+
+      // Sort by timestamp (oldest first)
+      const sortedKeys = strokeKeys
+        .map(key => ({ key, timestamp: allData[key].timestamp || 0 }))
+        .sort((a, b) => a.timestamp - b.timestamp);
+
+      // Remove oldest 25% of URLs
+      const toRemove = sortedKeys.slice(0, Math.ceil(sortedKeys.length * 0.25));
+      const keysToRemove = toRemove.map(item => item.key);
+
+      if (keysToRemove.length > 0) {
+        await chrome.storage.local.remove(keysToRemove);
+        this.showToast(`Cleaned up ${keysToRemove.length} old drawings`);
+      }
+    } catch (err) {
+      console.error('Failed to cleanup old strokes:', err);
+    }
+  }
+
+  setupURLChangeDetection() {
+    this.currentURL = this.getCurrentURL();
+
+    // Detect SPA navigation via MutationObserver on title
+    const titleObserver = new MutationObserver(async () => {
+      const newURL = this.getCurrentURL();
+      if (newURL !== this.currentURL) {
+        await this.saveStrokes(); // Save old URL
+        this.currentURL = newURL;
+        this.strokes = [];
+        this.redoStack = [];
+        await this.loadStrokes(); // Load new URL
+        this.redraw();
+      }
+    });
+
+    const titleElement = document.querySelector('title');
+    if (titleElement) {
+      titleObserver.observe(titleElement, { childList: true });
+    }
+
+    // Detect history navigation (back/forward)
+    window.addEventListener('popstate', async () => {
+      const newURL = this.getCurrentURL();
+      if (newURL !== this.currentURL) {
+        await this.saveStrokes(); // Save old URL
+        this.currentURL = newURL;
+        this.strokes = [];
+        this.redoStack = [];
+        await this.loadStrokes(); // Load new URL
+        this.redraw();
+      }
+    });
+
+    // Save before page closes
+    window.addEventListener('beforeunload', () => {
+      // Use sync version for beforeunload
+      const url = this.getCurrentURL();
+      const key = this.getStorageKey(url);
+      const data = {
+        strokes: this.strokes,
+        timestamp: Date.now(),
+        version: 1
+      };
+      chrome.storage.local.set({ [key]: data });
+    });
   }
 
   createCanvas() {
@@ -764,6 +920,7 @@ class Drawsh {
     this.startPoint = null;
     this.ctx.globalAlpha = 1;
     this.redraw();
+    this.debouncedSaveStrokes();
   }
 
   createTextInput(point) {
@@ -823,6 +980,7 @@ class Drawsh {
         autoContrast: this.isAutoContrast
       });
       this.redraw();
+      this.saveStrokes();
     }
 
     this.textInput.remove();
@@ -963,6 +1121,7 @@ class Drawsh {
 
     if (strokeRemoved) {
       this.redraw();
+      this.debouncedSaveStrokes();
     }
   }
 
@@ -1069,12 +1228,14 @@ class Drawsh {
       const stroke = this.strokes.pop();
       this.redoStack.push(stroke);
       this.redraw();
+      this.saveStrokes();
     } else if (this.redoStack.length > 0 && this.redoStack[0].type === 'clearAll') {
       // Undo a clear all action - restore all strokes
       const clearAction = this.redoStack.shift();
       this.strokes = clearAction.strokes;
       this.redoStack = [];
       this.redraw();
+      this.saveStrokes();
     }
   }
 
@@ -1088,10 +1249,12 @@ class Drawsh {
         this.redoStack = [clearAction];
         this.strokes = [];
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.saveStrokes();
       } else {
         const stroke = this.redoStack.pop();
         this.strokes.push(stroke);
         this.redraw();
+        this.saveStrokes();
       }
     }
   }
@@ -1105,6 +1268,7 @@ class Drawsh {
       }];
       this.strokes = [];
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      this.saveStrokes();
     }
   }
 
@@ -1344,10 +1508,18 @@ class Drawsh {
     this.ctx.stroke();
   }
 
-  toggle() {
+  async toggle() {
+    if (this.isActive) {
+      // Save before toggling off
+      await this.saveStrokes();
+    }
     this.isActive = !this.isActive;
     this.updateUI();
-    this.saveState();
+    await this.saveState();
+    if (this.isActive) {
+      // Reload when toggling on (URL may have changed)
+      await this.loadStrokes();
+    }
   }
 
   updateUI() {
@@ -1361,15 +1533,22 @@ class Drawsh {
     }
   }
 
-  loadState() {
-    chrome.storage.local.get(['drawshActive'], (result) => {
+  async loadState() {
+    try {
+      const result = await chrome.storage.local.get(['drawshActive']);
       this.isActive = result.drawshActive || false;
       this.updateUI();
-    });
+    } catch (err) {
+      console.error('Failed to load state:', err);
+    }
   }
 
-  saveState() {
-    chrome.storage.local.set({ drawshActive: this.isActive });
+  async saveState() {
+    try {
+      await chrome.storage.local.set({ drawshActive: this.isActive });
+    } catch (err) {
+      console.error('Failed to save state:', err);
+    }
   }
 
 }
@@ -1380,8 +1559,9 @@ const drawsh = new Drawsh();
 // Handle messages from popup
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.action === 'toggle') {
-    drawsh.toggle();
-    sendResponse({ active: drawsh.isActive });
-    return true;
+    drawsh.toggle().then(() => {
+      sendResponse({ active: drawsh.isActive });
+    });
+    return true; // Keep message channel open for async response
   }
 });

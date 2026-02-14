@@ -7,12 +7,15 @@
   z-index: 2147483646;
   pointer-events: none;
   touch-action: none;
+  opacity: 0;
+  transition: opacity 0.2s;
 }
 
 #drawsh-canvas.active {
   pointer-events: auto;
   cursor: crosshair;
   background: rgba(0, 0, 0, 0.05);
+  opacity: 1;
 }
 
 #drawsh-toolbar {
