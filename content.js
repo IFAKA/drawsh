@@ -16,7 +16,6 @@ class Drawsh {
     this.textInput = null;
 
     this.colors = [
-      { name: 'auto', value: 'auto', auto: true },
       { name: 'black', value: '#000000' },
       { name: 'white', value: '#ffffff' },
       { name: 'red', value: '#ef4444' },
@@ -26,7 +25,7 @@ class Drawsh {
       { name: 'orange', value: '#f97316' },
       { name: 'purple', value: '#a855f7' }
     ];
-    this.isAutoContrast = true;
+    this.isAutoContrast = false;
 
     this.sizes = [
       { name: 'thin', value: 2 },
@@ -50,6 +49,60 @@ class Drawsh {
     this.createToolbar();
     this.bindEvents();
     this.loadState();
+    this.setSmartDefaultColor();
+  }
+
+  // Analyze page brightness and set contrasting default color
+  setSmartDefaultColor() {
+    const backgroundColor = this.getPageBackgroundColor();
+    const brightness = this.calculateBrightness(backgroundColor);
+
+    // If page is bright (>128 on 0-255 scale), use dark color, else use light
+    if (brightness > 128) {
+      // Light background - default to black
+      const blackColorBtn = this.toolbar.querySelectorAll('.drawsh-color')[0]; // black is index 0
+      if (blackColorBtn) {
+        this.selectColor(blackColorBtn, this.colors[0]);
+      }
+    } else {
+      // Dark background - default to white
+      const whiteColorBtn = this.toolbar.querySelectorAll('.drawsh-color')[1]; // white is index 1
+      if (whiteColorBtn) {
+        this.selectColor(whiteColorBtn, this.colors[1]);
+      }
+    }
+  }
+
+  // Get the predominant background color of the page
+  getPageBackgroundColor() {
+    // Try body background first
+    let bgColor = window.getComputedStyle(document.body).backgroundColor;
+
+    // If transparent or white, check html element
+    if (bgColor === 'rgba(0, 0, 0, 0)' || bgColor === 'transparent') {
+      bgColor = window.getComputedStyle(document.documentElement).backgroundColor;
+    }
+
+    // If still transparent, assume white
+    if (bgColor === 'rgba(0, 0, 0, 0)' || bgColor === 'transparent') {
+      bgColor = 'rgb(255, 255, 255)';
+    }
+
+    return bgColor;
+  }
+
+  // Calculate brightness from RGB color (0-255)
+  calculateBrightness(rgbColor) {
+    // Parse rgb(r, g, b) or rgba(r, g, b, a)
+    const match = rgbColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (!match) return 128; // Default to medium if can't parse
+
+    const r = parseInt(match[1]);
+    const g = parseInt(match[2]);
+    const b = parseInt(match[3]);
+
+    // Use relative luminance formula (perceived brightness)
+    return (0.299 * r + 0.587 * g + 0.114 * b);
   }
 
   createCanvas() {
@@ -80,25 +133,17 @@ class Drawsh {
     // Colors
     this.colors.forEach((color, i) => {
       const btn = document.createElement('button');
-      btn.className = 'drawsh-color' + (i === 0 ? ' active' : '');
-      if (color.auto) {
-        // Auto-contrast button: half black, half white
-        btn.style.background = 'linear-gradient(135deg, #ffffff 50%, #000000 50%)';
+      btn.className = 'drawsh-color';
+      btn.style.background = color.value;
+      btn.title = color.name + ' (press ' + (i + 1) + ')';
+      if (color.alpha) {
+        btn.style.opacity = '0.7';
+      }
+      if (color.name === 'white') {
         btn.style.border = '2px solid #666';
-        btn.title = 'Auto contrast (press 1)';
-      } else {
-        btn.style.background = color.value;
-        btn.title = color.name + ' (press ' + (i + 1) + ')';
-        if (color.alpha) {
-          btn.style.opacity = '0.7';
-        }
-        if (color.name === 'white') {
-          btn.style.border = '2px solid #666';
-        }
       }
       btn.dataset.color = color.value;
       btn.dataset.alpha = color.alpha || '1';
-      btn.dataset.auto = color.auto || false;
       btn.addEventListener('click', () => this.selectColor(btn, color));
       this.toolbar.appendChild(btn);
     });
@@ -283,8 +328,8 @@ class Drawsh {
   selectColor(btn, color) {
     this.toolbar.querySelectorAll('.drawsh-color').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    this.isAutoContrast = color.auto || false;
-    this.currentColor = color.auto ? '#ffffff' : color.value;
+    this.isAutoContrast = false;
+    this.currentColor = color.value;
     this.currentAlpha = color.alpha || 1;
     if (this.currentTool === 'eraser') {
       this.selectTool('pen');
@@ -1333,7 +1378,7 @@ class Drawsh {
 const drawsh = new Drawsh();
 
 // Handle messages from popup
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.action === 'toggle') {
     drawsh.toggle();
     sendResponse({ active: drawsh.isActive });
