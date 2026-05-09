@@ -15,7 +15,7 @@ Draw on any webpage to explain things. Annotate, highlight, sketch ideas.
 
 ## Usage
 
-Click the extension icon or use the keyboard shortcut to toggle drawing mode.
+Click the extension icon or press `Alt+Shift+X` to toggle drawing mode.
 
 ## Tools
 
@@ -42,6 +42,7 @@ Click the extension icon or use the keyboard shortcut to toggle drawing mode.
 **Other shortcuts:**
 | Key | Action |
 |-----|--------|
+| `Alt+Shift+X` | Toggle drawing mode |
 | `1-9` | Select color |
 | `Ctrl+Z` | Undo |
 | `Ctrl+Shift+Z` | Redo |

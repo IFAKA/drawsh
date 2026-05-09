@@ -23,8 +23,8 @@
   "commands": {
     "toggle-drawsh": {
       "suggested_key": {
-        "default": "Alt+D",
-        "mac": "Alt+D"
+        "default": "Alt+Shift+X",
+        "mac": "Alt+Shift+X"
       },
       "description": "Toggle drawing mode"
     }

@@ -19,7 +19,7 @@ Drawsh is a Manifest V3 Chrome browser extension that allows users to draw annot
 - Each stroke contains: type, points/start/end, color, alpha, size, autoContrast flag
 
 **background.js** - Service worker
-- Handles keyboard shortcut commands (Alt+D) via chrome.commands API
+- Handles keyboard shortcut commands (Alt+Shift+X) via chrome.commands API
 - Sends messages to content script to toggle drawing mode
 
 **popup.js/popup.html** - Extension popup
@@ -81,7 +81,7 @@ Drawsh is a Manifest V3 Chrome browser extension that allows users to draw annot
 - Color selection: 1-8 (black, white, red, blue, green, yellow, orange, purple)
 - Undo: Ctrl+Z, Redo: Ctrl+Shift+Z
 - Screenshot: S
-- Toggle: Alt+D (via background.js), Esc (closes drawing mode)
+- Toggle: Alt+Shift+X (via background.js), Esc (closes drawing mode)
 
 ## Development Workflow
 
@@ -91,7 +91,7 @@ Drawsh is a Manifest V3 Chrome browser extension that allows users to draw annot
 2. Go to `chrome://extensions`
 3. Click the refresh icon on the Drawsh extension card
 4. Reload any open webpage tabs where you want to test
-5. Click the extension icon or press Alt+D to toggle drawing mode
+5. Click the extension icon or press Alt+Shift+X to toggle drawing mode
 
 ### Debugging
 
