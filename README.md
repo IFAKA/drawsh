@@ -60,3 +60,11 @@ Click the extension icon or press `Alt+Shift+X` to toggle drawing mode.
 7. Yellow (transparent)
 8. Orange
 9. Purple
+
+---
+
+## Support
+
+If this project is useful to you, you can support my work:
+
+[![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/zfaka)
